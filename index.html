@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>AES 복호화</title>
+
+  <!-- CryptoJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+    }
+    input, button, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    textarea {
+      height: 80px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>AES 코드 복호화</h2>
+
+<input id="encrypted" placeholder="암호화된 코드 입력" />
+<button onclick="decrypt()">복호화</button>
+
+<textarea id="result" placeholder="복호화 결과" readonly></textarea>
+
+<script>
+  // C#과 동일한 Key / IV
+  const KEY = CryptoJS.enc.Utf8.parse("k8D1v9S2E4xP0A7M5QWcZB3YH6RLTJmN"); // 32 bytes
+  const IV  = CryptoJS.enc.Utf8.parse("1234567890123456"); // 16 bytes
+
+  function decrypt() {
+    const input = document.getElementById("encrypted").value.trim();
+    if (!input) {
+      alert("값을 입력하세요");
+      return;
+    }
+
+    try {
+      // URL-safe Base64 → 일반 Base64 복원
+      let base64 = input
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+      // padding 복원
+      while (base64.length % 4 !== 0) {
+        base64 += "=";
+      }
+
+      const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: CryptoJS.enc.Base64.parse(base64) },
+        KEY,
+        {
+          iv: IV,
+          mode: CryptoJS.mode.CBC,
+          padding: CryptoJS.pad.Pkcs7
+        }
+      );
+
+      const result = decrypted.toString(CryptoJS.enc.Utf8);
+
+      document.getElementById("result").value =
+        result || "❌ 복호화 실패 (결과 없음)";
+    }
+    catch (e) {
+      document.getElementById("result").value = "❌ 복호화 오류";
+      console.error(e);
+    }
+  }
+</script>
+
+</body>
+</html>
