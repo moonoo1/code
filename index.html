@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>AES 복호화</title>
 
-  <!-- CryptoJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
   <style>
@@ -12,14 +11,19 @@
       font-family: Arial, sans-serif;
       padding: 30px;
     }
-    input, button, textarea {
+    input, button {
       width: 100%;
       padding: 10px;
       margin-top: 10px;
       font-size: 16px;
     }
-    textarea {
-      height: 80px;
+    .result {
+      margin-top: 15px;
+      font-size: 16px;
+      word-break: break-all;
+    }
+    a {
+      color: #0066cc;
     }
   </style>
 </head>
@@ -30,48 +34,75 @@
 <input id="encrypted" placeholder="암호화된 코드 입력" />
 <button onclick="decrypt()">복호화</button>
 
-<textarea id="result" placeholder="복호화 결과" readonly></textarea>
+<div id="result" class="result"></div>
 
 <script>
-  // C#과 동일한 Key / IV
-  const KEY = CryptoJS.enc.Utf8.parse("k8D1v9S2E4xP0A7M5QWcZB3YH6RLTJmN"); // 32 bytes
-  const IV  = CryptoJS.enc.Utf8.parse("1234567890123456"); // 16 bytes
+  const KEY = CryptoJS.enc.Utf8.parse("k8D1v9S2E4xP0A7M5QWcZB3YH6RLTJmN");
+  const IV  = CryptoJS.enc.Utf8.parse("1234567890123456");
 
   function decrypt() {
     const input = document.getElementById("encrypted").value.trim();
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = "";
+
     if (!input) {
       alert("값을 입력하세요");
       return;
     }
 
     try {
-      // URL-safe Base64 → 일반 Base64 복원
-      let base64 = input
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-
-      // padding 복원
-      while (base64.length % 4 !== 0) {
-        base64 += "=";
-      }
+      // URL-safe Base64 → Base64
+      let base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+      while (base64.length % 4 !== 0) base64 += "=";
 
       const decrypted = CryptoJS.AES.decrypt(
         { ciphertext: CryptoJS.enc.Base64.parse(base64) },
         KEY,
-        {
-          iv: IV,
-          mode: CryptoJS.mode.CBC,
-          padding: CryptoJS.pad.Pkcs7
-        }
+        { iv: IV, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
       );
 
-      const result = decrypted.toString(CryptoJS.enc.Utf8);
+      const plainText = decrypted.toString(CryptoJS.enc.Utf8);
 
-      document.getElementById("result").value =
-        result || "❌ 복호화 실패 (결과 없음)";
+      if (!plainText) {
+        resultDiv.innerText = "❌ 복호화 실패";
+        return;
+      }
+
+      // 기본 출력 (패턴 아니면 그대로 보여줌)
+      let outputNode = document.createTextNode(plainText);
+
+      // xxx_yyy 패턴 검사
+      const parts = plainText.split("_");
+      if (parts.length === 2) {
+        const [site, code] = parts;
+
+        let url = "";
+        switch (site) {
+          case "jhmungu":
+            url = `https://www.jhmungu.com/shop/goods_detail.php?ps_uid=${code}`;
+            break;
+          case "hangarambiz":
+            url = `https://www.hangarambiz.kr/shop/goods_detail.php?ps_uid=${code}`;
+            break;
+          case "metaldiy":
+            url = `https://www.metaldiy.com/item/itemView.do?itemId=${code}`;
+            break;
+        }
+
+        // 사이트가 매칭되면 링크로 출력
+        if (url) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.target = "_blank";
+          a.innerText = url;
+          outputNode = a;
+        }
+      }
+
+      resultDiv.appendChild(outputNode);
     }
     catch (e) {
-      document.getElementById("result").value = "❌ 복호화 오류";
+      resultDiv.innerText = "❌ 복호화 오류";
       console.error(e);
     }
   }
